@@ -1,4 +1,4 @@
-name: Surveillance Bénin Tours
+name: Surveillance Benin Tours
 
 on:
   schedule:
@@ -20,28 +20,38 @@ jobs:
         env:
           PUSHCUT_WEBHOOK: ${{ secrets.PUSHCUT_WEBHOOK }}
         run: |
+          set -e
+
           URL="https://voyage.benin.bj/"
           NEW="benin-page-new.html"
           OLD="benin-page.html"
 
-          curl -Ls "$URL" -o "$NEW"
+          curl -fsSL "$URL" -o "$NEW"
 
           if [ ! -f "$OLD" ]; then
             mv "$NEW" "$OLD"
-            echo "Première vérification : référence créée."
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+            git add "$OLD"
+            git commit -m "Initialiser la page surveillée"
+            git push
+
             exit 0
           fi
 
           if ! cmp -s "$OLD" "$NEW"; then
             echo "CHANGEMENT DETECTE !"
 
-            curl -X POST "$PUSHCUT_WEBHOOK"
+            curl -fsS -X POST "$PUSHCUT_WEBHOOK"
 
             mv "$NEW" "$OLD"
 
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add benin-page.html
+
+            git add "$OLD"
             git commit -m "Mise à jour de la page surveillée"
             git push
           else
