@@ -1,0 +1,50 @@
+name: Surveillance Bénin Tours
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v7
+
+      - name: Vérifier la page
+        env:
+          PUSHCUT_WEBHOOK: ${{ secrets.PUSHCUT_WEBHOOK }}
+        run: |
+          URL="https://voyage.benin.bj/"
+          NEW="benin-page-new.html"
+          OLD="benin-page.html"
+
+          curl -Ls "$URL" -o "$NEW"
+
+          if [ ! -f "$OLD" ]; then
+            mv "$NEW" "$OLD"
+            echo "Première vérification : référence créée."
+            exit 0
+          fi
+
+          if ! cmp -s "$OLD" "$NEW"; then
+            echo "CHANGEMENT DETECTE !"
+
+            curl -X POST "$PUSHCUT_WEBHOOK"
+
+            mv "$NEW" "$OLD"
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add benin-page.html
+            git commit -m "Mise à jour de la page surveillée"
+            git push
+          else
+            echo "Aucun changement."
+            rm "$NEW"
+          fi
